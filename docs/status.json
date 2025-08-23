@@ -1,6 +1,6 @@
 {
   "current_phase": "Phase 2.2 — Stripe support/branding/receipts",
-  "last_checkpoint": "Webhook 200 verified; payment links redirected",
+  "last_checkpoint": "Webhook 200 verified; all payment links have success redirects",
   "app_url": "https://nordlead-console.vercel.app",
   "updated_at": "2025-08-23T00:00:00Z"
 }
