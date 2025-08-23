@@ -1,6 +1,20 @@
 {
-  "current_phase": "Phase 2.2 — Stripe support/branding/receipts",
-  "last_checkpoint": "Webhook 200 verified; all payment links have success redirects",
+  "current_phase": "Phase 3 — Console Deploy & Tabs (next session)",
+  "last_checkpoint": "2.2C/D/E complete; domain nord-lead.dk delegated to Vercel; mailbox deferred; Stripe support email remains trade4@hartov.dk",
   "app_url": "https://nordlead-console.vercel.app",
-  "updated_at": "2025-08-23T00:00:00Z"
+  "domain": "nord-lead.dk",
+  "dns": {
+    "provider": "Vercel",
+    "ns": ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
+    "status": "valid_in_vercel",
+    "dnssec": "disabled_for_now"
+  },
+  "stripe": {
+    "public_details_email": "trade4@hartov.dk",
+    "branding": "Wordmark A + Icon rounded 256",
+    "receipts": ["successful_payments", "refunds"],
+    "notifications": ["payment_succeeded", "payment_reviews_elevated_risk", "disputes", "webhooks_failing", "payouts"],
+    "payout_schedule": "weekly_monday"
+  },
+  "updated_at": "2025-08-23T23:59:59Z"
 }
