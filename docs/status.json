@@ -1,13 +1,14 @@
 {
-  "current_phase": "Phase 3 — Console Deploy & Tabs (next session)",
-  "last_checkpoint": "2.2C/D/E complete; domain nord-lead.dk delegated to Vercel; mailbox deferred; Stripe support email remains trade4@hartov.dk",
+  "current_phase": "Phase 3 — Console Deploy & Tabs",
+  "last_checkpoint": "DNS for nord-lead.dk verified (global + local). Apex resolves, www 308→apex. Ready to scaffold console tabs.",
   "app_url": "https://nordlead-console.vercel.app",
   "domain": "nord-lead.dk",
   "dns": {
     "provider": "Vercel",
     "ns": ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
-    "status": "valid_in_vercel",
-    "dnssec": "disabled_for_now"
+    "status": "verified",
+    "verified_at": "2025-08-24T09:54:00Z",
+    "dnssec": "none"
   },
   "stripe": {
     "public_details_email": "trade4@hartov.dk",
@@ -16,5 +17,5 @@
     "notifications": ["payment_succeeded", "payment_reviews_elevated_risk", "disputes", "webhooks_failing", "payouts"],
     "payout_schedule": "weekly_monday"
   },
-  "updated_at": "2025-08-23T23:59:59Z"
+  "updated_at": "2025-08-24T09:54:00Z"
 }
