@@ -1,4 +1,3 @@
-// components/ChatOpsConsole.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,9 +13,6 @@ const HINT = `Try:
 /echo hello world
 /clear`;
 
-function nowIso() {
-  return new Date().toISOString();
-}
 function fmtCopenhagen(d = new Date()) {
   try {
     return new Intl.DateTimeFormat("da-DK", {
@@ -29,6 +25,20 @@ function fmtCopenhagen(d = new Date()) {
   }
 }
 
+async function fetchFirstOk(
+  urls: string[],
+  init?: RequestInit
+): Promise<{ url: string; res: Response }> {
+  let last: { url: string; status: number } | undefined;
+  for (const url of urls) {
+    const res = await fetch(url, init);
+    if (res.ok) return { url, res };
+    last = { url, status: res.status };
+  }
+  const detail = last ? ` (last: ${last.url} → ${last.status})` : "";
+  throw new Error("No payouts endpoint responded with 2xx" + detail);
+}
+
 export default function ChatOpsConsole() {
   const [input, setInput] = useState("");
   const [logs, setLogs] = useState<Log[]>([
@@ -39,15 +49,18 @@ export default function ChatOpsConsole() {
   const idx = useRef<number>(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [logs.length]);
 
   const append = useCallback((entry: Log | Log[]) => {
     setLogs((prev) => prev.concat(entry as any));
   }, []);
+
+  const out = useCallback(
+    async (text: string) =>
+      append({ id: `s-${Date.now()}-${Math.random()}`, role: "system", text }),
+    [append]
+  );
 
   const run = useCallback(
     async (raw: string) => {
@@ -58,9 +71,6 @@ export default function ChatOpsConsole() {
       history.current.unshift(cmd);
       idx.current = -1;
 
-      const out = async (text: string) =>
-        append({ id: `s-${Date.now()}-${Math.random()}`, role: "system", text });
-
       try {
         if (cmd === "/help") {
           await out(
@@ -68,9 +78,9 @@ export default function ChatOpsConsole() {
               "Commands:",
               "  /help                Show this list",
               "  /health              Call GET /api/health",
-              "  /payouts             Call GET /api/finance/payouts",
-              "  /time                Show current Copenhagen time",
-              "  /whoami              Browser & hint about public IP",
+              "  /payouts             Call GET /api/finance/payouts (robust)",
+              "  /time                Show Copenhagen time",
+              "  /whoami              Browser info + IP hint",
               "  /echo <text>         Repeat your text",
               "  /clear               Clear the screen",
               "",
@@ -100,21 +110,36 @@ export default function ChatOpsConsole() {
               : `Health error HTTP ${r.status}\n${JSON.stringify(j, null, 2)}`
           );
         } else if (cmd === "/payouts") {
-          const r = await fetch("/api/finance/payouts", { cache: "no-store" });
-          const j = await r.json().catch(() => ({}));
-          if (r.ok) {
-            const count = Array.isArray(j?.items) ? j.items.length : 0;
-            const sum = j?.totals?.amount ?? 0;
-            await out(
+          try {
+            const { url, res } = await fetchFirstOk(
               [
-                `Payouts OK — ${count} item(s), total ${sum} kr`,
-                JSON.stringify(j, null, 2),
-              ].join("\n")
+                "/api/finance/payouts",
+                "/api/finance/payouts/",
+                "/api/finance/payouts?limit=10",
+              ],
+              { cache: "no-store" }
             );
-          } else {
-            await out(
-              `Payouts error HTTP ${r.status}\n${JSON.stringify(j, null, 2)}`
-            );
+            const j = await res.json().catch(() => ({}));
+            if (res.ok) {
+              const count = Array.isArray(j?.items) ? j.items.length : 0;
+              const sum = j?.totals?.amount ?? 0;
+              await out(
+                [
+                  `Payouts OK via ${url} — ${count} item(s), total ${sum} kr`,
+                  JSON.stringify(j, null, 2),
+                ].join("\n")
+              );
+            } else {
+              await out(
+                `Payouts error HTTP ${res.status} via ${url}\n${JSON.stringify(
+                  j,
+                  null,
+                  2
+                )}`
+              );
+            }
+          } catch (e: any) {
+            await out(`Payouts lookup failed: ${e?.message || e}`);
           }
         } else if (cmd === "/") {
           await out(HINT);
@@ -129,7 +154,7 @@ export default function ChatOpsConsole() {
         setBusy(false);
       }
     },
-    [append]
+    [append, out]
   );
 
   const onSubmit = (e: React.FormEvent) => {
