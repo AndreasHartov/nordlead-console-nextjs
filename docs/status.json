@@ -1,21 +1,6 @@
 {
-  "current_phase": "Phase 3 — Console Deploy & Tabs",
-  "last_checkpoint": "DNS for nord-lead.dk verified (global + local). Apex resolves, www 308→apex. Ready to scaffold console tabs.",
-  "app_url": "https://nordlead-console.vercel.app",
-  "domain": "nord-lead.dk",
-  "dns": {
-    "provider": "Vercel",
-    "ns": ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
-    "status": "verified",
-    "verified_at": "2025-08-24T09:54:00Z",
-    "dnssec": "none"
-  },
-  "stripe": {
-    "public_details_email": "trade4@hartov.dk",
-    "branding": "Wordmark A + Icon rounded 256",
-    "receipts": ["successful_payments", "refunds"],
-    "notifications": ["payment_succeeded", "payment_reviews_elevated_risk", "disputes", "webhooks_failing", "payouts"],
-    "payout_schedule": "weekly_monday"
-  },
-  "updated_at": "2025-08-24T09:54:00Z"
+  "current_phase": "Phase 3 — Refunds v1 (API + CRM form + ChatOps) — not started",
+  "last_checkpoint": "Domain nord-lead.dk live (www→apex 308). Nameservers on Vercel. App healthy (/api/health OK). Finance v0.1 (payouts endpoint + page) live. Compliance v0 live. Dashboard v1 (metrics) live. Plan v0 live. Ops v0 live. CRM v0.1 live. ChatOps v0 live (/help, /ping, /health, /payouts). Stripe support email stays trade4@hartov.dk until support@nord-lead.dk mailbox is created. Phase 2.2 A–E completed.",
+  "app_url": "https://nord-lead.dk",
+  "updated_at": "2025-08-24T00:00:00Z"
 }
