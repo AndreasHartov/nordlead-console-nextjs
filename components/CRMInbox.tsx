@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+/** ------------ Types ------------ */
 type Lead = {
   id: string;
   createdAt: string;
@@ -18,10 +19,10 @@ type Lead = {
 };
 
 type RefundTicket = {
-  id: string;          // ticket id
+  id: string;
   leadId: string;
-  createdAt: string;   // ISO when queued
-  reason: string;      // one of predefined or custom
+  createdAt: string;  // ISO
+  reason: string;
   note?: string;
   name?: string;
   phone?: string;
@@ -32,6 +33,30 @@ type RefundTicket = {
   cplDkk?: number;
 };
 
+type Partner = {
+  id: string;
+  name: string;
+  trade?: string;
+  phone?: string;
+  email?: string;
+};
+
+type Assignment = {
+  id: string;         // assignment id
+  leadId: string;
+  partnerId: string;
+  partnerName: string;
+  createdAt: string;  // ISO
+  name?: string;
+  phone?: string;
+  email?: string;
+  trade?: string;
+  city?: string;
+  zip?: string;
+  cplDkk?: number;
+};
+
+/** ------------ Utils ------------ */
 const REASONS = [
   "Invalid contact",
   "Outside area",
@@ -49,12 +74,12 @@ function fmtDate(s?: string) {
     return s;
   }
 }
-
 function stripeSearchUrl(q?: string) {
   if (!q) return "https://dashboard.stripe.com/search";
   return `https://dashboard.stripe.com/search?query=${encodeURIComponent(q)}`;
 }
 
+/** ------------ localStorage hooks ------------ */
 function useRefundQueue() {
   const [items, setItems] = useState<RefundTicket[]>([]);
   useEffect(() => {
@@ -70,32 +95,14 @@ function useRefundQueue() {
   const clear = () => save([]);
   const csvHref = useMemo(() => {
     const header = [
-      "ticket_id",
-      "lead_id",
-      "queued_at",
-      "reason",
-      "note",
-      "name",
-      "phone",
-      "email",
-      "trade",
-      "city",
-      "zip",
-      "cpl_dkk",
+      "ticket_id","lead_id","queued_at","reason","note",
+      "name","phone","email","trade","city","zip","cpl_dkk",
     ];
     const rows = items.map((x) => [
-      x.id,
-      x.leadId,
-      x.createdAt,
-      x.reason,
+      x.id, x.leadId, x.createdAt, x.reason,
       (x.note || "").replace(/\n/g, " ").replace(/,/g, ";"),
-      x.name || "",
-      x.phone || "",
-      x.email || "",
-      x.trade || "",
-      x.city || "",
-      x.zip || "",
-      String(x.cplDkk ?? ""),
+      x.name || "", x.phone || "", x.email || "",
+      x.trade || "", x.city || "", x.zip || "", String(x.cplDkk ?? ""),
     ]);
     const all = [header, ...rows].map((r) => r.join(",")).join("\n");
     return "data:text/csv;charset=utf-8," + encodeURIComponent(all);
@@ -104,14 +111,60 @@ function useRefundQueue() {
   return { items, add, remove, clear, csvHref };
 }
 
+function usePartners() {
+  const [partners, setPartners] = useState<Partner[]>([]);
+  useEffect(() => {
+    const raw = localStorage.getItem("crm:partners");
+    if (raw) {
+      setPartners(JSON.parse(raw));
+    } else {
+      // seed with two example partners
+      const seed: Partner[] = [
+        { id: "P-001", name: "Hellerup VVS", trade: "VVS", phone: "+45 70 11 22 33", email: "kontakt@hellerup-vvs.dk" },
+        { id: "P-002", name: "Elfix ApS", trade: "Elektriker", phone: "+45 71 22 33 44", email: "hej@elfix.dk" },
+      ];
+      localStorage.setItem("crm:partners", JSON.stringify(seed));
+      setPartners(seed);
+    }
+  }, []);
+  const save = (arr: Partner[]) => {
+    setPartners(arr);
+    localStorage.setItem("crm:partners", JSON.stringify(arr));
+  };
+  const add = (p: Partner) => save([p, ...partners]);
+  const remove = (id: string) => save(partners.filter((x) => x.id !== id));
+  return { partners, add, remove };
+}
+
+function useAssigned() {
+  const [items, setItems] = useState<Assignment[]>([]);
+  useEffect(() => {
+    const raw = localStorage.getItem("crm:assigned");
+    setItems(raw ? JSON.parse(raw) : []);
+  }, []);
+  const save = (arr: Assignment[]) => {
+    setItems(arr);
+    localStorage.setItem("crm:assigned", JSON.stringify(arr));
+  };
+  const add = (a: Assignment) => save([a, ...items]);
+  return { items, add };
+}
+
+/** ------------ Component ------------ */
 export default function CRMInbox() {
   const [data, setData] = useState<Lead[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
   const [openBad, setOpenBad] = useState<string | null>(null);
   const [reason, setReason] = useState<string>(REASONS[0]);
   const [note, setNote] = useState<string>("");
 
   const queue = useRefundQueue();
+  const partners = usePartners();
+  const assigned = useAssigned();
+
+  // per-row partner selection
+  const [pick, setPick] = useState<Record<string, string>>({});
 
   useEffect(() => {
     (async () => {
@@ -127,12 +180,37 @@ export default function CRMInbox() {
     })();
   }, []);
 
-  const assign = (id: string) => {
-    // v0: purely client-side mark-as-done
-    const keep = data.filter((x) => x.id !== id);
-    setData(keep);
+  /** Assign **/
+  const doAssign = (lead: Lead) => {
+    const partnerId = pick[lead.id] || partners.partners[0]?.id;
+    if (!partnerId) {
+      alert("Add a partner first in the Partners panel.");
+      return;
+    }
+    const partner = partners.partners.find((p) => p.id === partnerId);
+    if (!partner) {
+      alert("Partner not found.");
+      return;
+    }
+    const a: Assignment = {
+      id: `A-${Date.now()}`,
+      leadId: lead.id,
+      partnerId,
+      partnerName: partner.name,
+      createdAt: new Date().toISOString(),
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      trade: lead.trade,
+      city: lead.city,
+      zip: lead.zip,
+      cplDkk: lead.cplDkk,
+    };
+    assigned.add(a);
+    setData((arr) => arr.filter((x) => x.id !== lead.id));
   };
 
+  /** Bad-lead **/
   const queueBadLead = (lead: Lead) => {
     const ticket: RefundTicket = {
       id: `T-${Date.now()}`,
@@ -149,9 +227,7 @@ export default function CRMInbox() {
       cplDkk: lead.cplDkk,
     };
     queue.add(ticket);
-    // remove from inbox
     setData((arr) => arr.filter((x) => x.id !== lead.id));
-    // reset
     setOpenBad(null);
     setReason(REASONS[0]);
     setNote("");
@@ -183,13 +259,14 @@ export default function CRMInbox() {
               <th style={th}>City</th>
               <th style={th}>Notes</th>
               <th style={th}>CPL</th>
+              <th style={th}>Assign</th>
               <th style={th}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: 14, textAlign: "center", color: "#666" }}>
+                <td colSpan={8} style={{ padding: 14, textAlign: "center", color: "#666" }}>
                   Inbox empty.
                 </td>
               </tr>
@@ -224,14 +301,24 @@ export default function CRMInbox() {
                   <td style={td}>{lead.description || "—"}</td>
                   <td style={td}>{typeof lead.cplDkk === "number" ? `${lead.cplDkk} kr` : "—"}</td>
                   <td style={td}>
+                    <select
+                      value={pick[lead.id] ?? ""}
+                      onChange={(e) => setPick((m) => ({ ...m, [lead.id]: e.target.value }))}
+                      style={input}
+                    >
+                      <option value="" disabled>
+                        {partners.partners.length ? "Choose partner…" : "No partners yet"}
+                      </option>
+                      {partners.partners.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} {p.trade ? `(${p.trade})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={td}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => assign(lead.id)}
-                        title="Mark valid and assign (v0: removes from inbox)"
-                        style={btn}
-                      >
-                        Valid → assign
-                      </button>
+                      <button onClick={() => doAssign(lead)} style={btn}>Assign</button>
                       <button
                         onClick={() => setOpenBad(lead.id === openBad ? null : lead.id)}
                         style={btnDanger}
@@ -289,15 +376,10 @@ export default function CRMInbox() {
   );
 }
 
+/** ------------ styles ------------ */
 const th: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontWeight: 700, fontSize: 13, color: "#444" };
 const td: React.CSSProperties = { padding: "10px 12px", verticalAlign: "top", fontSize: 14 };
-const btn: React.CSSProperties = {
-  padding: "6px 10px",
-  border: "1px solid #ddd",
-  borderRadius: 8,
-  background: "#fff",
-  cursor: "pointer",
-};
+const btn: React.CSSProperties = { padding: "6px 10px", border: "1px solid #ddd", borderRadius: 8, background: "#fff", cursor: "pointer" };
 const btnLight: React.CSSProperties = { ...btn, background: "#fff" };
 const btnDanger: React.CSSProperties = { ...btn, borderColor: "#fca5a5", color: "#b91c1c", background: "#fff" };
 const input: React.CSSProperties = { padding: 8, border: "1px solid #ddd", borderRadius: 8, width: "100%" };
