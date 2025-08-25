@@ -1,6 +1,6 @@
 # NordLead — Authoritative Plan & Runbook
 
-**Last updated:** 2025-08-24  
+**Last updated:** 2025-08-25  
 **Owner:** Andreas  
 **App:** https://nord-lead.dk  
 **Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
@@ -61,7 +61,7 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 
 ## Phased Plan (from zero → live)
 
-### Phase 0 — Continuity & Control (done or repeatable in minutes)
+### Phase 0 — Continuity & Control (repeatable fast)
 - Downloaded DocuPack (plan + prompts + quick links).
 - Ensure this file exists: `/docs/business-plan.md`.
 - Add `/docs/status.json` with current phase/step (template below).
@@ -93,30 +93,30 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 - Events (min): `checkout.session.completed`, `charge.refunded`
 - Env vars (Vercel): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
-### Phase 3 — Console Deploy & Tabs
+### Phase 3 — Console Deploy, Domain, Tabs
 **Domain & Deploy — ✅ done**
-- **Domain:** `nord-lead.dk` (note the hyphen). **www** → apex 308 verified.
+- **Domain:** `nord-lead.dk` (note hyphen). **www → 308 → apex** verified.
 - Nameservers: **Vercel**; DNS propagation confirmed.
-- Support email stays **trade4@hartov.dk** for now (defer **support@nord-lead.dk** until workspace/mailbox creation).
+- Support email remains **trade4@hartov.dk** for now. **support@nordlead.dk** + workspace/mailbox is deferred (non-blocking) and scheduled when we launch the public site + switch Stripe support email.
 
-**Tabs (scaffold) — ✅**
-- **Dashboard v1** (KPIs: MRR, CPL by trade, refunds placeholder, VAT runway) — live.
+**Tabs (live)**
+- **Dashboard v1** (MRR placeholder, CPL by trade, refunds placeholder, VAT runway) — live.
 - **Site** (public pages mgmt preview) — live (placeholder).
 - **Plan v0** (Gantt + run buttons) — live.
-- **CRM v0.1** (inbox + refund queue export, now includes basic Refund form placeholder) — live.
-- **Finance v0.1** (payouts view + `/api/finance/payouts`) — live.
-- **Compliance v0** (VAT/CVR/ApS checklists) — live.
+- **CRM v0.1** (inbox + partner assignment + refund queue CSV) — live.
+- **Finance v0.1** (payouts + `/api/finance/payouts`, balance & schedule cards) — live.
+- **Compliance v0** (VAT watcher, payout schedule, checklist) — live.
 - **Ops v0** (SLA monitor placeholders; 09–17 CET) — live.
-- **ChatOps v0** (commands: `/help`, `/ping`, `/health`, `/payouts`) — live.
+- **ChatOps v0** (deterministic commands: `/help`, `/health`, `/payouts`) — live.
 
-**Next execution card (paused at checkpoint):**  
-**Phase 3 — Refunds v1 (API + CRM form + ChatOps)**
+**Next execution card (paused):**  
+**Phase 3 — Refunds v1** (API + CRM form + ChatOps) — *not started (parked at checkpoint)*.
 
 ---
 
 ## Commercials (Retainer, CPLs, Refunds, SLA)
 - **Retainer A** (priority + rotation): **DKK 4,500 / month**
-- **Initial launch CPLs** (tune with data):
+- **Initial CPLs** (adjust with data):
 
 | Trade | CPL (DKK) |
 | --- | ---: |
@@ -126,18 +126,109 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 | Vinduer & Døre (Windows/Doors) | 400 |
 | Tag (Roofing) | 500 |
 
-Changing CPLs later creates a new Price ID and usually a new Payment Link in Stripe.
-
 **Refund policy (bad-lead auto-refunds):**  
 Refund if any is true: invalid contact, outside area, job doesn’t exist/duplicate, wrong trade category. One-click in CRM with audit trail to Finance.
 
-**SLA:** 15 minutes response time only within **09:00–17:00 CET, Mon–Fri**. SLA monitor drives partner prioritization; breaches trigger deprioritization.
+**SLA:** 15 minutes response time only within **09:00–17:00 CET, Mon–Fri**.
 
 ---
 
 ## Technical Stack & Repo Layout
-- **Next.js (App Router)** on Vercel
-- **Stripe** (Payment Links now; Checkout API later)
-- Optional: **Supabase** (DB/auth), **Plausible** (analytics), **Postmark/Resend** (email), **Sentry** (errors), **Dinero** (accounting export)
+- **Next.js (App Router)** on Vercel  
+- **Stripe** (Payment Links now; API later)  
+- Optional: **Supabase**, **Plausible**, **Postmark/Resend**, **Sentry**, **Dinero**
 
 **Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
+
+    /app
+      layout.tsx
+      page.tsx
+      /api/health/route.ts
+      /success/page.tsx
+      /cancel/page.tsx
+      /api/stripe-webhook/route.ts
+      /api/finance/payouts/route.ts
+      (next: /api/finance/refunds/route.ts)
+      /crm/page.tsx
+      /finance/page.tsx
+      /compliance/page.tsx
+      /ops/page.tsx
+      /chatops/page.tsx
+      /api/chatops/route.ts
+    /components
+      FinanceBalance.tsx
+      FinancePayoutSchedule.tsx
+      FinancePayouts.tsx
+      VATWatcher.tsx
+      ComplianceChecklist.tsx
+      CRMInbox.tsx
+      CRMPartners.tsx
+      CRMAssigned.tsx
+      ChatOpsConsole.tsx
+    /docs
+      business-plan.md
+      status.json
+
+---
+
+## Stripe Configuration (live)
+- Products & Links: `dashboard.stripe.com/products`, `dashboard.stripe.com/payment-links`
+- Success redirect on every link → `https://nord-lead.dk/success?p=...&cs={CHECKOUT_SESSION_ID}`
+- Webhook destination (Live): `dashboard.stripe.com/webhooks` → NordLead Console (prod)
+- Events: `checkout.session.completed`, `charge.refunded` (expand later)
+- Signing secret in Vercel: `STRIPE_WEBHOOK_SECRET`
+- Public details & branding:
+  - Public: `dashboard.stripe.com/settings/public`
+  - Branding: `dashboard.stripe.com/settings/branding`
+  - Receipts: `dashboard.stripe.com/settings/emails`
+  - Notifications: `dashboard.stripe.com/settings/notifications`
+  - Payouts: `dashboard.stripe.com/settings/payouts`
+
+---
+
+## Compliance, VAT, and Company Path (DK)
+- Start: **Enkeltmandsvirksomhed** (fast, low CAPEX).
+- VAT watcher: warn well before DKK 50,000 turnover → register for moms.
+- Conversion: tax-free **virksomhedsomdannelse** to ApS when criteria met.
+- GDPR: lawful basis for validation & optional media; retention timers; privacy notices; delete/anonymize schedule.
+- Dinero export monthly.
+
+---
+
+## Operations & KPIs
+- Lead flow: form → validate → score → assign → partner accepts → CPL decrement/charge → refund queue if needed.
+- Ops alerts: SLA timer start on push; warn at +10m; breach at +15m (within window).
+- KPIs: MRR, CPL by trade, refund rate, partner LTV, ROAS, VAT runway.
+- Cadence: daily payouts review; weekly Dinero export; monthly P&L snapshot.
+
+---
+
+## Risk Controls & Feature Flags
+**Flags**
+- `PROMISE_SLA_15_MIN` (off until green ≥7 days)
+- `PROMISE_AUTO_REFUND` (on only when end-to-end works)
+- `SHOW_CPL_PUBLIC` (on when Stripe amounts finalized)
+
+**Triggers**
+- VAT ≥ 50,000 DKK → register moms
+- Refund rate > 20% / week → tighten validation; QA
+- SLA breaches > 10% / week → partner deprioritization
+- ROAS < target 7 days → dial back ad spend
+- Chargebacks > 1% → add friction; manual review
+
+---
+
+## Status Checkpoint
+**Live app:** https://nord-lead.dk  
+**Domains:** apex valid; **www → 308 → apex**.  
+**Webhook:** deliveries 200 OK for `checkout.session.completed`.  
+**What’s next:** **Phase 3 — Refunds v1** (API + CRM form + ChatOps).  
+- Add `POST /api/finance/refunds`  
+- Wire CRM Refund form  
+- Add ChatOps command `/refund ch_… [amount_ø]` (amount optional)
+
+---
+
+## How to resume in a new chat
+Paste this one-liner as the **first message**:
+    Checkpoint: plan at /docs/business-plan.md in https://github.com/AndreasHartov/nordlead-console-nextjs — app https://nord-lead.dk — status /docs/status.json — continue from “Phase 3 — Refunds v1 (API + CRM + ChatOps)”.
