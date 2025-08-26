@@ -1,7 +1,8 @@
 // app/refunds/[id]/page.tsx
-// FULL FILE — minimal server-rendered refund detail + events.
+// FULL FILE — server-rendered refund detail + events with local times.
 
 import Link from "next/link";
+import LocalTime from "../../../components/LocalTime";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +69,8 @@ export default async function RefundDetailPage({ params }: { params: { id: strin
           <div>reason: {refund.reason ?? "—"}</div>
           <div>notes: {refund.notes ?? "—"}</div>
           <div>source: {refund.source}</div>
-          <div>created_at: {new Date(refund.created_at).toLocaleString()}</div>
-          <div>updated_at: {new Date(refund.updated_at).toLocaleString()}</div>
+          <div>created_at: <LocalTime iso={refund.created_at} /></div>
+          <div>updated_at: <LocalTime iso={refund.updated_at} /></div>
         </div>
       </section>
 
@@ -83,7 +84,7 @@ export default async function RefundDetailPage({ params }: { params: { id: strin
               <div key={i} style={{ padding: 12, borderTop: i ? "1px solid #eee" : "none" }}>
                 <div style={{ fontWeight: 600 }}>{e.type}</div>
                 <div style={{ color: "#666", fontSize: 12 }}>
-                  {new Date(e.created_at).toLocaleString()}
+                  <LocalTime iso={e.created_at} />
                 </div>
                 <pre
                   style={{
