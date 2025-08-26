@@ -2,15 +2,28 @@
   "project": "nordlead-console",
   "repo": "https://github.com/AndreasHartov/nordlead-console-nextjs",
   "app_url": "https://nord-lead.dk",
-  "phase": "Phase 3 — Refunds v1 (API + CRM + ChatOps)",
+  "docs": {
+    "status": "/docs/status.json",
+    "business_plan": "/docs/business-plan.md"
+  },
+  "checkpoint": {
+    "timestamp_local": "2025-08-26T10:35:00+02:00",
+    "timezone": "Europe/Copenhagen",
+    "note": "Break checkpoint after completing Phase 3 Steps 3–6. Resume at Step 7 (ChatOps — Slack slash command)."
+  },
+  "phase": {
+    "number": 3,
+    "name": "Refunds v1 (API + CRM + ChatOps)",
+    "status": "in_progress"
+  },
   "progress": {
     "completed_steps": [
-      {"id": 3, "name": "Deps + Neon lib"},
-      {"id": 4, "name": "Refunds API (POST/GET, detail)"},
-      {"id": 5, "name": "Stripe webhook (refund updates)"},
-      {"id": 6, "name": "CRM UI (list + detail)"}
+      { "id": 3, "name": "Deps + Neon lib" },
+      { "id": 4, "name": "Refunds API (POST/GET, detail)" },
+      { "id": 5, "name": "Stripe webhook (refund updates)" },
+      { "id": 6, "name": "CRM UI (list + detail)" }
     ],
-    "current_step": {"id": 7, "name": "ChatOps — Slack slash command", "status": "todo"}
+    "current_step": { "id": 7, "name": "ChatOps — Slack slash command", "status": "todo" }
   },
   "endpoints": {
     "api_list": "https://nord-lead.dk/api/refunds",
@@ -20,13 +33,17 @@
     "ui_detail": "https://nord-lead.dk/refunds/{id}"
   },
   "env": {
-    "required": [
+    "present": [
       "DATABASE_URL",
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
       "OPERATOR_API_KEY",
       "APP_BASE_URL"
-    ],
-    "notes": "All required vars are set in Vercel for Preview+Production."
-  }
+    ]
+  },
+  "next_actions": [
+    "Create Slack app in test workspace; add slash command /refunds",
+    "Set SLACK_SIGNING_SECRET in Vercel (Preview + Production)",
+    "Add app/api/slack/commands/route.ts; redeploy and test"
+  ]
 }
