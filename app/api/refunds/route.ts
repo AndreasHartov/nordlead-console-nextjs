@@ -15,7 +15,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function POST(req: NextRequest) {
-  const user = await authGuard("operator");
+  const user = await authGuard();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const user = await authGuard("operator");
+  const user = await authGuard();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
