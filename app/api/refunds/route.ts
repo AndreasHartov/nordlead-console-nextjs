@@ -9,8 +9,9 @@ import { authGuard } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// stripe@14 type defs expect "2023-10-16"
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2023-10-16",
 });
 
 type RefundRow = {
@@ -102,26 +103,4 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "Refund creation failed" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(req: NextRequest) {
-  const user = await authGuard("operator");
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const url = new URL(req.url);
-  const limitParam = Number(url.searchParams.get("limit") ?? "50");
-  const limit = Number.isFinite(limitParam)
-    ? Math.min(Math.max(limitParam, 1), 200)
-    : 50;
-
-  const rows = await sql<RefundRow>`
-    select * from refunds
-    order by created_at desc
-    limit ${limit}
-  `;
-
-  return NextResponse.json({ refunds: rows });
-}
+      { status:
