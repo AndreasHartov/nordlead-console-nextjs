@@ -1,6 +1,6 @@
 # NordLead — Authoritative Plan & Runbook
 
-**Last updated:** 2025-08-25  
+**Last updated:** 2025-08-26  
 **Owner:** Andreas  
 **App:** https://nord-lead.dk  
 **Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
@@ -109,8 +109,31 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 - **Ops v0** (SLA monitor placeholders; 09–17 CET) — live.
 - **ChatOps v0** (deterministic commands: `/help`, `/health`, `/payouts`) — live.
 
-**Next execution card (paused):**  
-**Phase 3 — Refunds v1** (API + CRM form + ChatOps) — *not started (parked at checkpoint)*.
+**Execution Card — Phase 3: Refunds v1 (API + CRM + ChatOps) — 🚧 in progress**
+
+**Completed (v1)**
+- **DB & Deps**
+  - Neon DB linked via Vercel (`DATABASE_URL` injected).
+  - Deps added: `@neondatabase/serverless`, `stripe`.
+  - `lib/db.ts` (Neon client); `lib/auth.ts` (operator header guard).
+  - Env present: `APP_BASE_URL=https://nord-lead.dk`, `OPERATOR_API_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- **API**
+  - `POST /api/refunds` (create Stripe refund; persist to `refunds` + `refund_events(created)`).
+  - `GET /api/refunds` (list), `GET /api/refunds/[id]` (detail).
+- **Webhooks**
+  - `POST /api/stripe/webhook` (handles `refund.updated`, `charge.refunded`, `charge.refund.updated`).
+  - Upserts `refunds` and appends `refund_events (webhook_update)`.
+  - Verified Stripe deliveries (200) and Neon rows present.
+- **CRM UI**
+  - `/refunds` (list) and `/refunds/[id]` (detail) render server-side.
+  - Local-time rendering via `components/LocalTime.tsx`.
+
+**Remaining (v1)**
+- **ChatOps (Step 7)**
+  - Slack App (test workspace) + Slash Command `/refunds`.
+  - Request URL: `https://nord-lead.dk/api/slack/commands`.
+  - Env: `SLACK_SIGNING_SECRET` (Vercel Preview + Production).
+  - Endpoint: `app/api/slack/commands/route.ts` (reply with status/amount link for `re_*` or `pi_*`).
 
 ---
 
@@ -135,47 +158,54 @@ Refund if any is true: invalid contact, outside area, job doesn’t exist/duplic
 
 ## Technical Stack & Repo Layout
 - **Next.js (App Router)** on Vercel  
-- **Stripe** (Payment Links now; API later)  
+- **Stripe** (Payment Links now; API + Webhooks for refunds)  
+- **Neon (Postgres)** via Vercel integration  
 - Optional: **Supabase**, **Plausible**, **Postmark/Resend**, **Sentry**, **Dinero**
 
 **Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
 
-    /app
-      layout.tsx
-      page.tsx
-      /api/health/route.ts
-      /success/page.tsx
-      /cancel/page.tsx
-      /api/stripe-webhook/route.ts
-      /api/finance/payouts/route.ts
-      (next: /api/finance/refunds/route.ts)
-      /crm/page.tsx
-      /finance/page.tsx
-      /compliance/page.tsx
-      /ops/page.tsx
-      /chatops/page.tsx
-      /api/chatops/route.ts
-    /components
-      FinanceBalance.tsx
-      FinancePayoutSchedule.tsx
-      FinancePayouts.tsx
-      VATWatcher.tsx
-      ComplianceChecklist.tsx
-      CRMInbox.tsx
-      CRMPartners.tsx
-      CRMAssigned.tsx
-      ChatOpsConsole.tsx
-    /docs
-      business-plan.md
-      status.json
+~~~txt
+/app
+  layout.tsx
+  page.tsx
+  /api/health/route.ts
+  /success/page.tsx
+  /cancel/page.tsx
+  /api/stripe/webhook/route.ts
+  /api/finance/payouts/route.ts
+  /api/refunds/route.ts
+  /api/refunds/[id]/route.ts
+  /refunds/page.tsx
+  /refunds/[id]/page.tsx
+  /chatops/page.tsx
+  /api/chatops/route.ts   (existing deterministic v0)
+  (next: /api/slack/commands/route.ts)
+ /components
+  FinanceBalance.tsx
+  FinancePayoutSchedule.tsx
+  FinancePayouts.tsx
+  VATWatcher.tsx
+  ComplianceChecklist.tsx
+  CRMInbox.tsx
+  CRMPartners.tsx
+  CRMAssigned.tsx
+  ChatOpsConsole.tsx
+  LocalTime.tsx
+/docs
+  business-plan.md
+  status.json
+/lib
+  db.ts
+  auth.ts
+~~~
 
 ---
 
 ## Stripe Configuration (live)
 - Products & Links: `dashboard.stripe.com/products`, `dashboard.stripe.com/payment-links`
 - Success redirect on every link → `https://nord-lead.dk/success?p=...&cs={CHECKOUT_SESSION_ID}`
-- Webhook destination (Live): `dashboard.stripe.com/webhooks` → NordLead Console (prod)
-- Events: `checkout.session.completed`, `charge.refunded` (expand later)
+- Webhook destination (Prod): `https://nord-lead.dk/api/stripe/webhook`
+- Events: `checkout.session.completed`, `refund.updated`, `charge.refunded`, `charge.refund.updated`
 - Signing secret in Vercel: `STRIPE_WEBHOOK_SECRET`
 - Public details & branding:
   - Public: `dashboard.stripe.com/settings/public`
@@ -221,15 +251,20 @@ Refund if any is true: invalid contact, outside area, job doesn’t exist/duplic
 ## Status Checkpoint
 **Live app:** https://nord-lead.dk  
 **Domains:** apex valid; **www → 308 → apex**.  
-**Webhook:** deliveries 200 OK for `checkout.session.completed`.  
-**What’s next:** **Phase 3 — Refunds v1** (API + CRM form + ChatOps).  
-- Add `POST /api/finance/refunds`  
-- Wire CRM Refund form  
-- Add ChatOps command `/refund ch_… [amount_ø]` (amount optional)
+**Webhooks:** 200 OK for `refund.updated`, `charge.refunded`, `charge.refund.updated`; rows written in Neon (`refunds`, `refund_events`).  
+**What’s next:** **Phase 3 — Refunds v1** → **Step 7: ChatOps (Slack slash command)**.  
+- Create Slack App (test workspace) + `/refunds` slash command.  
+- Request URL `https://nord-lead.dk/api/slack/commands`; env `SLACK_SIGNING_SECRET`.  
+- Add `app/api/slack/commands/route.ts`; redeploy; test with `re_*` / `pi_*`.
+
+---
+
+## Changelog
+- **2025-08-26** — Phase 3 Refunds v1: Deps/DB/API/Webhook/CRM UI done; next Step 7 (ChatOps).  
+- **2025-08-25** — Snapshot prior to Refunds v1 build; domains & tabs live; Stripe links/webhook live.
 
 ---
 
 ## How to resume in a new chat
 Paste this one-liner as the **first message**:
-    Checkpoint: plan at /docs/business-plan.md in https://github.com/AndreasHartov/nordlead-console-nextjs — app https://nord-lead.dk — status /docs/status.json — continue from “Phase 3 — Refunds v1 (API + CRM + ChatOps)”.
-
+    Checkpoint: plan at /docs/business-plan.md in https://github.com/AndreasHartov/nordlead-console-nextjs — app https://nord-lead.dk — status /docs/status.json — resume Phase 3 at Step 7 (ChatOps — Slack slash command).
