@@ -1,67 +1,32 @@
 {
-  "project": "NordLead Console",
+  "project": "nordlead-console",
   "repo": "https://github.com/AndreasHartov/nordlead-console-nextjs",
   "app_url": "https://nord-lead.dk",
-  "docs": {
-    "status": "/docs/status.json",
-    "business_plan": "/docs/business-plan.md"
-  },
-  "checkpoint": {
-    "timestamp_local": "2025-08-25T21:01:07+02:00",
-    "timezone": "Europe/Copenhagen",
-    "reason": "Break checkpoint: Step 2 complete (Neon DB linked + schema created). Resume at Step 3 with full-file package.json + lib files."
-  },
-  "phase": {
-    "number": 3,
-    "name": "Refunds v1 (API + CRM + ChatOps)",
-    "status": "in_progress",
-    "owner": "Andreas Hartov",
-    "started_on": "2025-08-25",
-    "target_done_on": "2025-08-27",
-    "success_criteria": [
-      "Create refund via Console API for a Stripe charge or payment_intent",
-      "Receive Stripe webhooks and keep refund status in sync",
-      "List/detail refunds in CRM page",
-      "Trigger refund via Slack ChatOps with confirmation",
-      "Green E2E for normal/partial refund + webhook update"
-    ]
-  },
+  "phase": "Phase 3 — Refunds v1 (API + CRM + ChatOps)",
   "progress": {
-    "steps": [
-      { "id": "2.0", "name": "Stripe test mode + keys noted", "status": "done" },
-      { "id": "2.1", "name": "Vercel envs set (STRIPE_SECRET_KEY, APP_BASE_URL, OPERATOR_API_KEY)", "status": "done" },
-      { "id": "2.2", "name": "Create Neon DB & link to project (DATABASE_URL injected)", "status": "done" },
-      { "id": "2.3", "name": "Run schema (refunds, refund_events)", "status": "done" },
-      { "id": "3.0", "name": "Add deps to package.json (@neondatabase/serverless, stripe) — full-file replacement", "status": "pending" },
-      { "id": "3.1", "name": "Add lib/db.ts (Neon) — full-file replacement", "status": "pending" },
-      { "id": "3.2", "name": "Add lib/auth.ts — full-file replacement", "status": "pending" },
-      { "id": "4.0", "name": "API routes (create/list/detail) — full-file replacements", "status": "pending" },
-      { "id": "5.0", "name": "Stripe webhook handler — full-file replacement", "status": "pending" },
-      { "id": "6.0", "name": "CRM UI list/detail", "status": "pending" },
-      { "id": "7.0", "name": "ChatOps skeleton (/refund)", "status": "pending" }
-    ]
+    "completed_steps": [
+      {"id": 3, "name": "Deps + Neon lib"},
+      {"id": 4, "name": "Refunds API (POST/GET, detail)"},
+      {"id": 5, "name": "Stripe webhook (refund updates)"},
+      {"id": 6, "name": "CRM UI (list + detail)"}
+    ],
+    "current_step": {"id": 7, "name": "ChatOps — Slack slash command", "status": "todo"}
   },
-  "preflight": {
-    "dns_verified": "confirmed-live-by-user-2025-08-25",
-    "app_loads": true,
-    "db_linked": true,
-    "schema": "refunds + refund_events present"
+  "endpoints": {
+    "api_list": "https://nord-lead.dk/api/refunds",
+    "api_detail": "https://nord-lead.dk/api/refunds/{id}",
+    "api_webhook": "https://nord-lead.dk/api/stripe/webhook",
+    "ui_list": "https://nord-lead.dk/refunds",
+    "ui_detail": "https://nord-lead.dk/refunds/{id}"
   },
   "env": {
-    "present": [
-      "APP_BASE_URL",
+    "required": [
+      "DATABASE_URL",
       "STRIPE_SECRET_KEY",
-      "OPERATOR_API_KEY",
-      "DATABASE_URL"
-    ],
-    "todo_later": [
       "STRIPE_WEBHOOK_SECRET",
-      "SLACK_BOT_TOKEN",
-      "SLACK_SIGNING_SECRET"
-    ]
-  },
-  "next_actions": [
-    "Tomorrow: post full package.json here; we return a full-file replacement that preserves your scripts and adds only required deps.",
-    "Then add lib/db.ts and lib/auth.ts (full files) and proceed to API routes."
-  ]
+      "OPERATOR_API_KEY",
+      "APP_BASE_URL"
+    ],
+    "notes": "All required vars are set in Vercel for Preview+Production."
+  }
 }
