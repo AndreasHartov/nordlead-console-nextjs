@@ -10,7 +10,7 @@ import { authGuard } from "../../../lib/auth";
 export const dynamic = "force-dynamic";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20"
+  apiVersion: "2024-06-20",
 });
 
 type RefundRow = {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     charge_id,
     amount_cents,
     reason,
-    notes
+    notes,
   }: {
     payment_intent_id?: string;
     charge_id?: string;
@@ -71,3 +71,57 @@ export async function POST(req: NextRequest) {
     if (reason) params.reason = reason as any;
 
     const refund = await stripe.refunds.create(params);
+
+    const inserted = (
+      await sql<RefundRow>`
+        insert into refunds (
+          provider, provider_refund_id, provider_payment_intent_id, provider_charge_id,
+          status, amount_cents, currency, reason, initiated_by, source, notes
+        ) values (
+          'stripe', ${refund.id},
+          ${refund.payment_intent ?? null},
+          ${refund.charge ?? null},
+          ${refund.status ?? 'pending'},
+          ${refund.amount ?? amount_cents ?? 0},
+          ${String(refund.currency ?? 'dkk').toLowerCase()},
+          ${refund.reason ?? reason ?? null},
+          ${user.id},
+          'console',
+          ${notes ?? null}
+        )
+        returning *
+      `
+    )[0];
+
+    await sql`
+      insert into refund_events (refund_id, type, payload)
+      values (${inserted.id}, 'created', ${JSON.stringify(refund)})
+    `;
+
+    return NextResponse.json({ refund: inserted }, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message ?? "Refund creation failed" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const user = await authGuard("operator");
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(req.url);
+  const limitParam = Number(url.searchParams.get("limit") ?? "50");
+  const limit = Number.isFinite(limitParam)
+    ? Math.min(Math.max(limitParam, 1), 200)
+    : 50;
+
+  const rows = await sql<RefundRow>`
+    select * from refunds
+    order by created_at desc
+    limit ${limit}
+  `;
+
+  return NextResponse.json({ refunds: rows });
+}
