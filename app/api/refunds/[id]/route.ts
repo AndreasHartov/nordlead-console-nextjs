@@ -13,7 +13,7 @@ function looksLikeUuid(v: string) {
 }
 
 export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
-  const user = await authGuard("operator");
+  const user = await authGuard();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = ctx.params.id;
