@@ -2,8 +2,9 @@
 // FULL FILE — do not trim.
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { authGuard } from "@/lib/auth";
+// from app/api/refunds/[id]/ → root → lib
+import { sql } from "../../../../lib/db";
+import { authGuard } from "../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
