@@ -1,7 +1,8 @@
 // app/refunds/page.tsx
-// FULL FILE — minimal server-rendered list of refunds.
+// FULL FILE — minimal server-rendered list of refunds with local time display.
 
 import Link from "next/link";
+import LocalTime from "../../components/LocalTime";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function RefundsPage() {
               <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
                 <td style={{ padding: "10px" }}>
                   <Link href={`/refunds/${r.id}`} style={{ textDecoration: "underline" }}>
-                    {new Date(r.created_at).toLocaleString()}
+                    <LocalTime iso={r.created_at} />
                   </Link>
                 </td>
                 <td style={{ padding: "10px", textTransform: "capitalize" }}>{r.status}</td>
