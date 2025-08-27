@@ -1,6 +1,5 @@
 // app/refunds/page.tsx
-// FULL FILE — Refunds list with "Create refund" link (fixed syntax).
-// Renders latest refunds from Neon and links to detail view.
+// FULL FILE — Refunds list with "Create refund" link (typed to satisfy noImplicitAny).
 
 import React from "react";
 import Link from "next/link";
@@ -42,7 +41,8 @@ function formatCopenhagen(iso: string) {
 }
 
 export default async function RefundsPage() {
-  const rows = await sql<RefundRow>`
+  // Explicitly type the result so map callback infers correctly
+  const rows: RefundRow[] = await sql<RefundRow>`
     select
       id,
       provider_refund_id,
@@ -96,7 +96,7 @@ export default async function RefundsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {rows.map((r: RefundRow) => {
               const created = formatCopenhagen(r.created_at);
               const amt = amountFmt(r.amount_cents, r.currency);
               return (
