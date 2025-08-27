@@ -1,6 +1,6 @@
 # NordLead — Authoritative Plan & Runbook
 
-**Last updated:** 2025-08-26  
+**Last updated:** 2025-08-27  
 **Owner:** Andreas  
 **App:** https://nord-lead.dk  
 **Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
@@ -29,10 +29,10 @@
 ## Business Overview
 Two-sided Danish trades lead marketplace powered by a private operator console (NordLead Console, Next.js on Vercel).
 
-**Public side (5 niche sites):** capture verified, high-intent demand for: VVS, Elektriker, Tag, Vinduer & Døre, Tømrer.  
-**Operator console:** run acquisition, vetting, routing, billing, refunds, VAT/compliance, and ops with yes/no decision gates.
+Public side (5 niche sites): capture verified, high-intent demand for: VVS, Elektriker, Tag, Vinduer & Døre, Tømrer.  
+Operator console: run acquisition, vetting, routing, billing, refunds, VAT/compliance, and ops with yes/no decision gates.
 
-**Monetization**
+Monetization
 - Retainer A (priority & rotation lock): **DKK 4,500 / month** per contractor.
 - CPL add-ons (per trade).
 - 14-day onboarding sprint (one-time).
@@ -40,10 +40,10 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 ---
 
 ## Market, Positioning, Segments
-- **Demand:** DK homeowners & SMBs needing urgent or planned works (the 5 trades). Seek fast response, verified pros, clear pricing.
-- **Supply:** Small DK contractors wanting predictable, verified leads, transparent pricing, no long phone trees.
-- **Positioning:** “Denmark’s no-nonsense trades lead engine. Verified leads. 15-minute response (9–17 CET). Clear pricing. Bad-lead auto-refunds.”
-- **Primary trades:** VVS, Elektriker, Tag, Vinduer & Døre, Tømrer.
+- Demand: DK homeowners & SMBs needing urgent or planned works (the 5 trades). Seek fast response, verified pros, clear pricing.
+- Supply: Small DK contractors wanting predictable, verified leads, transparent pricing, no long phone trees.
+- Positioning: “Denmark’s no-nonsense trades lead engine. Verified leads. 15-minute response (9–17 CET). Clear pricing. Bad-lead auto-refunds.”
+- Primary trades: VVS, Elektriker, Tag, Vinduer & Døre, Tømrer.
 
 ---
 
@@ -62,9 +62,8 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 ## Phased Plan (from zero → live)
 
 ### Phase 0 — Continuity & Control (repeatable fast)
-- Downloaded DocuPack (plan + prompts + quick links).
 - Ensure this file exists: `/docs/business-plan.md`.
-- Add `/docs/status.json` with current phase/step (template below).
+- Add `/docs/status.json` with current phase/step.
 
 ### Phase 1 — Company & Payments Readiness
 - Stripe live + payouts (KYC, bank, payouts schedule).
@@ -79,14 +78,14 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 - Retainer A (DKK 4,500/m) → Payment Link.
 - 14-day Sprint (one-time) → Payment Link.
 - CPL products per trade → Payment Links.
-- Set Success redirect on all links to `/success?p=...&cs={CHECKOUT_SESSION_ID}`.
+- Success redirect on all links to `/success?p=...&cs={CHECKOUT_SESSION_ID}`.
 
 **2.2 Support/Branding/Receipts (live) — ✅ done**
-- Public details & support URL: `dashboard.stripe.com/settings/public`
-- Branding (logo/color): `dashboard.stripe.com/settings/branding`
-- Email receipts (success + refunds): `dashboard.stripe.com/settings/emails`
-- Notifications (payment & webhook failure alerts): `dashboard.stripe.com/settings/notifications`
-- Payout cadence verify: `dashboard.stripe.com/settings/payouts`
+- Public details & support URL: https://dashboard.stripe.com/settings/public  
+- Branding (logo/color): https://dashboard.stripe.com/settings/branding  
+- Email receipts (success + refunds): https://dashboard.stripe.com/settings/emails  
+- Notifications (payment & webhook failure alerts): https://dashboard.stripe.com/settings/notifications  
+- Payout cadence verify: https://dashboard.stripe.com/settings/payouts
 
 **2.3 Webhook (live) — ✅ done**
 - Destination: `https://nordlead-console.vercel.app/api/stripe-webhook`
@@ -94,52 +93,45 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 - Env vars (Vercel): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ### Phase 3 — Console Deploy, Domain, Tabs
+
 **Domain & Deploy — ✅ done**
-- **Domain:** `nord-lead.dk` (note hyphen). **www → 308 → apex** verified.
-- Nameservers: **Vercel**; DNS propagation confirmed.
-- Support email remains **trade4@hartov.dk** for now. **support@nordlead.dk** + workspace/mailbox is deferred (non-blocking) and scheduled when we launch the public site + switch Stripe support email.
+- Domain: `nord-lead.dk` (note hyphen). **www → 308 → apex** verified.
+- Nameservers: Vercel; DNS propagation confirmed.
+- Support email remains `trade4@hartov.dk` for now. `support@nordlead.dk` is deferred until public site + Stripe support email switch.
 
 **Tabs (live)**
-- **Dashboard v1** (MRR placeholder, CPL by trade, refunds placeholder, VAT runway) — live.
-- **Site** (public pages mgmt preview) — live (placeholder).
-- **Plan v0** (Gantt + run buttons) — live.
-- **CRM v0.1** (inbox + partner assignment + refund queue CSV) — live.
-- **Finance v0.1** (payouts + `/api/finance/payouts`, balance & schedule cards) — live.
-- **Compliance v0** (VAT watcher, payout schedule, checklist) — live.
-- **Ops v0** (SLA monitor placeholders; 09–17 CET) — live.
-- **ChatOps v0** (deterministic commands: `/help`, `/health`, `/payouts`) — live.
+- Dashboard v1 (MRR placeholder, CPL by trade, refunds placeholder, VAT runway) — live.
+- Site (public pages mgmt preview) — live (placeholder).
+- Plan v0 (Gantt + run buttons) — live.
+- CRM v0.1 (inbox + partner assignment + refund queue CSV) — live.
+- Finance v0.1 (payouts + `/api/finance/payouts`, balance & schedule cards) — live.
+- Compliance v0 (VAT watcher, payout schedule, checklist) — live.
+- Ops v0 (SLA monitor placeholders; 09–17 CET) — live.
 
-**Execution Card — Phase 3: Refunds v1 (API + CRM + ChatOps) — 🚧 in progress**
+**Refunds v1 workstream**
+- Step 5 — Webhook handling & DB logging for refunds — ✅ done (Stripe 200s; rows in Neon).
+- Step 6 — Refunds list & detail views — ✅ done (newest first; linkable detail).
+- Step 7 — ChatOps (Slack) `/refunds` — ✅ done  
+  - Slack app installed to “NordLead Test”; slash command `/refunds`.  
+  - Endpoint `app/api/slack/commands/route.ts` with signature verification (`SLACK_SIGNING_SECRET`).  
+  - Query by `re_*`, `pi_*`, or internal UUID; ephemeral reply with link to detail.
+- Step 8.1 — Operator “Create refund” form — ✅ done  
+  - `app/refunds/new/page.tsx` (server action). Creates Stripe refund, persists to Neon, redirects to detail.
+- Step 8.2 — “+ Create refund” link on list — ✅ done  
+  - `app/refunds/page.tsx` replaced; typed; link to `/refunds/new`.
 
-**Completed (v1)**
-- **DB & Deps**
-  - Neon DB linked via Vercel (`DATABASE_URL` injected).
-  - Deps added: `@neondatabase/serverless`, `stripe`.
-  - `lib/db.ts` (Neon client); `lib/auth.ts` (operator header guard).
-  - Env present: `APP_BASE_URL=https://nord-lead.dk`, `OPERATOR_API_KEY`, `STRIPE_WEBHOOK_SECRET`.
-- **API**
-  - `POST /api/refunds` (create Stripe refund; persist to `refunds` + `refund_events(created)`).
-  - `GET /api/refunds` (list), `GET /api/refunds/[id]` (detail).
-- **Webhooks**
-  - `POST /api/stripe/webhook` (handles `refund.updated`, `charge.refunded`, `charge.refund.updated`).
-  - Upserts `refunds` and appends `refund_events (webhook_update)`.
-  - Verified Stripe deliveries (200) and Neon rows present.
-- **CRM UI**
-  - `/refunds` (list) and `/refunds/[id]` (detail) render server-side.
-  - Local-time rendering via `components/LocalTime.tsx`.
-
-**Remaining (v1)**
-- **ChatOps (Step 7)**
-  - Slack App (test workspace) + Slash Command `/refunds`.
-  - Request URL: `https://nord-lead.dk/api/slack/commands`.
-  - Env: `SLACK_SIGNING_SECRET` (Vercel Preview + Production).
-  - Endpoint: `app/api/slack/commands/route.ts` (reply with status/amount link for `re_*` or `pi_*`).
+**Next execution card (paused at checkpoint):**  
+**Step 8.3 — Deploy & test operator refund flow**  
+- Open `/refunds/new`, submit with real `pi_*` or `ch_*`.  
+- Verify `refunds` row + `operator_created` event in Neon.  
+- Verify refund in Stripe.  
+- Sanity via Slack `/refunds …`.
 
 ---
 
 ## Commercials (Retainer, CPLs, Refunds, SLA)
-- **Retainer A** (priority + rotation): **DKK 4,500 / month**
-- **Initial CPLs** (adjust with data):
+- Retainer A (priority + rotation): **DKK 4,500 / month**
+- Initial CPLs (adjust with data):
 
 | Trade | CPL (DKK) |
 | --- | ---: |
@@ -149,70 +141,54 @@ Two-sided Danish trades lead marketplace powered by a private operator console (
 | Vinduer & Døre (Windows/Doors) | 400 |
 | Tag (Roofing) | 500 |
 
-**Refund policy (bad-lead auto-refunds):**  
-Refund if any is true: invalid contact, outside area, job doesn’t exist/duplicate, wrong trade category. One-click in CRM with audit trail to Finance.
+Refund policy (bad-lead auto-refunds): refund if any is true: invalid contact, outside area, job doesn’t exist/duplicate, wrong trade category. One-click in CRM with audit trail to Finance.
 
-**SLA:** 15 minutes response time only within **09:00–17:00 CET, Mon–Fri**.
+SLA: 15 minutes response time only within **09:00–17:00 CET, Mon–Fri**.
 
 ---
 
 ## Technical Stack & Repo Layout
-- **Next.js (App Router)** on Vercel  
-- **Stripe** (Payment Links now; API + Webhooks for refunds)  
-- **Neon (Postgres)** via Vercel integration  
-- Optional: **Supabase**, **Plausible**, **Postmark/Resend**, **Sentry**, **Dinero**
+- Next.js (App Router) on Vercel  
+- Stripe (Payment Links now; API for refunds in console)  
+- Neon Postgres (via Vercel integration)  
+- Optional: Plausible, Postmark/Resend, Sentry, Dinero
 
-**Repo:** https://github.com/AndreasHartov/nordlead-console-nextjs
-
-~~~txt
-/app
-  layout.tsx
-  page.tsx
-  /api/health/route.ts
-  /success/page.tsx
-  /cancel/page.tsx
-  /api/stripe/webhook/route.ts
-  /api/finance/payouts/route.ts
-  /api/refunds/route.ts
-  /api/refunds/[id]/route.ts
-  /refunds/page.tsx
-  /refunds/[id]/page.tsx
-  /chatops/page.tsx
-  /api/chatops/route.ts   (existing deterministic v0)
-  (next: /api/slack/commands/route.ts)
- /components
-  FinanceBalance.tsx
-  FinancePayoutSchedule.tsx
-  FinancePayouts.tsx
-  VATWatcher.tsx
-  ComplianceChecklist.tsx
-  CRMInbox.tsx
-  CRMPartners.tsx
-  CRMAssigned.tsx
-  ChatOpsConsole.tsx
-  LocalTime.tsx
-/docs
-  business-plan.md
-  status.json
-/lib
-  db.ts
-  auth.ts
-~~~
+Repo layout (key paths)
+- app/layout.tsx  
+- app/page.tsx  
+- app/success/page.tsx  
+- app/cancel/page.tsx  
+- app/api/health/route.ts  
+- app/api/stripe-webhook/route.ts  
+- app/api/finance/payouts/route.ts  
+- app/api/slack/commands/route.ts        ← Slack `/refunds`  
+- app/refunds/page.tsx                    ← refunds list (+ link to New)  
+- app/refunds/[id]/page.tsx               ← refund detail  
+- app/refunds/new/page.tsx                ← operator create-refund form  
+- app/crm/page.tsx  
+- app/finance/page.tsx  
+- app/compliance/page.tsx  
+- app/ops/page.tsx  
+- app/chatops/page.tsx  
+- app/api/chatops/route.ts  
+- components/*  
+- docs/business-plan.md  
+- docs/status.json
 
 ---
 
 ## Stripe Configuration (live)
-- Products & Links: `dashboard.stripe.com/products`, `dashboard.stripe.com/payment-links`
-- Success redirect on every link → `https://nord-lead.dk/success?p=...&cs={CHECKOUT_SESSION_ID}`
-- Webhook destination (Prod): `https://nord-lead.dk/api/stripe/webhook`
-- Events: `checkout.session.completed`, `refund.updated`, `charge.refunded`, `charge.refund.updated`
-- Signing secret in Vercel: `STRIPE_WEBHOOK_SECRET`
-- Public details & branding:
-  - Public: `dashboard.stripe.com/settings/public`
-  - Branding: `dashboard.stripe.com/settings/branding`
-  - Receipts: `dashboard.stripe.com/settings/emails`
-  - Notifications: `dashboard.stripe.com/settings/notifications`
-  - Payouts: `dashboard.stripe.com/settings/payouts`
+- Products & Links: https://dashboard.stripe.com/products, https://dashboard.stripe.com/payment-links  
+- Success redirect on every link → `https://nord-lead.dk/success?p=...&cs={CHECKOUT_SESSION_ID}`  
+- Webhook destination (Live): https://dashboard.stripe.com/webhooks → NordLead Console (prod)  
+- Events: `checkout.session.completed`, `charge.refunded`  
+- Signing secret in Vercel: `STRIPE_WEBHOOK_SECRET`  
+- Public details & branding:  
+  - Public: https://dashboard.stripe.com/settings/public  
+  - Branding: https://dashboard.stripe.com/settings/branding  
+  - Receipts: https://dashboard.stripe.com/settings/emails  
+  - Notifications: https://dashboard.stripe.com/settings/notifications  
+  - Payouts: https://dashboard.stripe.com/settings/payouts
 
 ---
 
@@ -234,12 +210,12 @@ Refund if any is true: invalid contact, outside area, job doesn’t exist/duplic
 ---
 
 ## Risk Controls & Feature Flags
-**Flags**
+Flags
 - `PROMISE_SLA_15_MIN` (off until green ≥7 days)
 - `PROMISE_AUTO_REFUND` (on only when end-to-end works)
 - `SHOW_CPL_PUBLIC` (on when Stripe amounts finalized)
 
-**Triggers**
+Triggers
 - VAT ≥ 50,000 DKK → register moms
 - Refund rate > 20% / week → tighten validation; QA
 - SLA breaches > 10% / week → partner deprioritization
@@ -249,22 +225,23 @@ Refund if any is true: invalid contact, outside area, job doesn’t exist/duplic
 ---
 
 ## Status Checkpoint
-**Live app:** https://nord-lead.dk  
-**Domains:** apex valid; **www → 308 → apex**.  
-**Webhooks:** 200 OK for `refund.updated`, `charge.refunded`, `charge.refund.updated`; rows written in Neon (`refunds`, `refund_events`).  
-**What’s next:** **Phase 3 — Refunds v1** → **Step 7: ChatOps (Slack slash command)**.  
-- Create Slack App (test workspace) + `/refunds` slash command.  
-- Request URL `https://nord-lead.dk/api/slack/commands`; env `SLACK_SIGNING_SECRET`.  
-- Add `app/api/slack/commands/route.ts`; redeploy; test with `re_*` / `pi_*`.
+Live app: https://nord-lead.dk  
+Domains: apex valid; **www → 308 → apex**.  
+Neon: DB online; `refunds` + `refund_events` populated.  
+Stripe: webhook deliveries 200 OK; refunds visible in Dashboard.  
+Slack: `/refunds` command active in *NordLead Test* workspace.
+
+What’s next (resume here): **Phase 3 → Step 8.3 — Deploy & test operator refund flow**.
 
 ---
 
 ## Changelog
-- **2025-08-26** — Phase 3 Refunds v1: Deps/DB/API/Webhook/CRM UI done; next Step 7 (ChatOps).  
-- **2025-08-25** — Snapshot prior to Refunds v1 build; domains & tabs live; Stripe links/webhook live.
+- **2025-08-27** — Added Slack `/refunds` (signature verified), operator “Create refund” page, list link; checkpoint set at Step 8.3.  
+- **2025-08-26** — Refunds DB + web views; Neon tables; webhook 200s; domain verified.  
+- **2025-08-25** — Plan consolidated; Phase 2 completed (products, links, branding, receipts, webhook).
 
 ---
 
 ## How to resume in a new chat
 Paste this one-liner as the **first message**:
-    Checkpoint: plan at /docs/business-plan.md in https://github.com/AndreasHartov/nordlead-console-nextjs — app https://nord-lead.dk — status /docs/status.json — resume Phase 3 at Step 7 (ChatOps — Slack slash command).
+Checkpoint: plan at /docs/business-plan.md in https://github.com/AndreasHartov/nordlead-console-nextjs — app https://nord-lead.dk — status /docs/status.json — resume Phase 3 at Step 8.3 (operator refund form — deploy & test).
