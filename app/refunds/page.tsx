@@ -1,7 +1,8 @@
 // app/refunds/page.tsx
-// FULL FILE — Refunds list with "Create refund" link.
+// FULL FILE — Refunds list with "Create refund" link (fixed syntax).
 // Renders latest refunds from Neon and links to detail view.
 
+import React from "react";
 import Link from "next/link";
 import { sql } from "../../lib/db";
 
@@ -25,7 +26,6 @@ function amountFmt(cents: number | null | undefined, currency: string | null | u
 }
 
 function formatCopenhagen(iso: string) {
-  // Display in Europe/Copenhagen for operator sanity
   try {
     return new Intl.DateTimeFormat("da-DK", {
       timeZone: "Europe/Copenhagen",
@@ -37,7 +37,6 @@ function formatCopenhagen(iso: string) {
       second: "2-digit",
     }).format(new Date(iso));
   } catch {
-    // Fallback if ICU is limited
     return new Date(iso).toISOString().replace("T", " ").replace("Z", " UTC");
   }
 }
@@ -60,7 +59,14 @@ export default async function RefundsPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "1rem",
+        }}
+      >
         <h1 style={{ fontSize: "2rem", margin: 0 }}>Refunds</h1>
         <Link
           href="/refunds/new"
@@ -103,4 +109,50 @@ export default async function RefundsPage() {
                   <td style={td}>{r.status ?? "-"}</td>
                   <td style={td}>{amt}</td>
                   <td style={td} title={r.provider_refund_id ?? ""}>
-                    <code style={co
+                    <code style={code}>{r.provider_refund_id ?? "-"}</code>
+                  </td>
+                  <td style={td} title={r.provider_payment_intent_id ?? ""}>
+                    <code style={code}>{r.provider_payment_intent_id ?? "-"}</code>
+                  </td>
+                  <td style={td} title={r.provider_charge_id ?? ""}>
+                    <code style={code}>{r.provider_charge_id ?? "-"}</code>
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ ...td, textAlign: "center", color: "#666" }}>
+                  No refunds yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "0.75rem",
+  fontWeight: 700,
+  fontSize: 14,
+  borderBottom: "1px solid #eee",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: "0.75rem",
+  fontSize: 14,
+  verticalAlign: "top",
+  whiteSpace: "nowrap",
+};
+
+const code: React.CSSProperties = {
+  background: "#f6f8fa",
+  padding: "2px 6px",
+  borderRadius: 4,
+  fontSize: 12,
+};
