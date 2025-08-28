@@ -3,17 +3,16 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { sql } from "../../../lib/db";
 
-// Tiny helper: avoid importing a non-existent export from lib/db
+// Small, local helper to avoid importing a non-existent 'first' from lib/db
 const firstRow = <T>(rows: T[]): T => {
   if (!rows || rows.length === 0) throw new Error("Not found");
   return rows[0] as T;
 };
 
-// Row shape we RETURN from INSERT ... RETURNING
+// Row shape we expect back from INSERT ... RETURNING
 type RefundRow = { id: string };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // Stripe v14 pairs safely with this API version in type space
   apiVersion: "2023-10-16" as any,
 });
 
@@ -65,12 +64,11 @@ export async function POST(req: Request) {
     if (charge) createParams.charge = charge;
 
     if (typeof amount_dkk === "number" && !Number.isNaN(amount_dkk)) {
-      // Stripe uses smallest currency unit
-      createParams.amount = Math.round(amount_dkk * 100);
+      createParams.amount = Math.round(amount_dkk * 100); // DKK → øre
     }
     if (reason) createParams.reason = reason as any;
 
-    // Internal audit context
+    // Ensure we always tag who initiated this
     createParams.metadata = {
       initiated_by: "operator",
       notes: notes || "",
@@ -78,28 +76,33 @@ export async function POST(req: Request) {
 
     const refund = await stripe.refunds.create(createParams);
 
-    // Normalize IDs returned by Stripe
     const provider_payment_intent_id =
       typeof refund.payment_intent === "string"
         ? refund.payment_intent
         : refund.payment_intent?.id ?? null;
 
     const provider_charge_id =
-      typeof refund.charge === "string" ? refund.charge : refund.charge?.id ?? null;
+      typeof refund.charge === "string"
+        ? refund.charge
+        : refund.charge?.id ?? null;
 
-    // Insert refund row (ensure NOT NULL initiated_by)
-    const rows = await sql<RefundRow>`
+    // ---- NOTE ON TYPING ----
+    // Our sql() helper is typed loosely and may return unknown.
+    // We coerce the result to RefundRow[] here so TS knows the shape.
+    const inserted = (await sql`
       insert into refunds
         (provider_refund_id, status, amount_cents, currency,
          provider_payment_intent_id, provider_charge_id, initiated_by)
       values
-        (${refund.id}, ${refund.status}, ${refund.amount ?? null}, ${refund.currency ?? "dkk"},
+        (${refund.id}, ${refund.status}, ${refund.amount ?? null}, ${
+          refund.currency ?? "dkk"
+        },
          ${provider_payment_intent_id}, ${provider_charge_id}, 'operator')
       returning id
-    `;
-    const row = firstRow(rows);
+    `) as RefundRow[];
 
-    // Audit event
+    const row = firstRow<RefundRow>(inserted);
+
     await sql`
       insert into refund_events (refund_id, type, created_at)
       values (${row.id}, 'operator_created', now())
