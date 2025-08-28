@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import Stripe from 'stripe';
-import { sql } from '@/lib/db';
 
+// Ensure this page + server action run on Node (Stripe SDK requires Node runtime)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function parseAmountToOere(input: string | null): number | undefined {
@@ -32,7 +33,10 @@ export default async function Page({
     const notes = q(formData.get('notes') as string);
 
     if (!payment_intent && !charge) {
-      redirect('/refunds/new?error=' + encodeURIComponent('Provide either a PaymentIntent (pi_…) or a Charge (ch_…); one is required.'));
+      redirect(
+        '/refunds/new?error=' +
+          encodeURIComponent('Provide either a PaymentIntent (pi_…) or a Charge (ch_…); one is required.')
+      );
     }
 
     try {
@@ -41,16 +45,18 @@ export default async function Page({
         redirect('/refunds/new?error=' + encodeURIComponent('Missing STRIPE_SECRET_KEY in Vercel env.'));
       }
 
+      // Create the refund in Stripe
       const stripe = new Stripe(secret!);
-
       const params: Stripe.RefundCreateParams = {
         payment_intent: payment_intent,
         charge: charge,
         amount: amountCents,
         reason: reason as Stripe.RefundCreateParams.Reason,
       };
-
       const refund = await stripe.refunds.create(params);
+
+      // Lazy-load DB only after Stripe succeeds
+      const { sql } = await import('@/lib/db');
 
       // Persist refund row
       const insert = await sql<{ id: string }>`
@@ -75,7 +81,7 @@ export default async function Page({
       `;
       const refundId = insert.rows[0]?.id;
 
-      // Log operator event (non-fatal if it fails)
+      // Log operator event (best-effort)
       try {
         if (refundId) {
           await sql`
@@ -88,8 +94,10 @@ export default async function Page({
       }
 
       if (!refundId) {
-        // If row did not come back, fall back to list with a soft warning
-        redirect('/refunds?error=' + encodeURIComponent('Refund created in Stripe, but DB row missing. Check Neon and webhook updates.'));
+        redirect(
+          '/refunds?error=' +
+            encodeURIComponent('Refund created in Stripe, but DB row missing. Check Neon and webhook updates.')
+        );
       }
 
       redirect(`/refunds/${refundId}`);
