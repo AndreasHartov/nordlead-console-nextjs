@@ -1,141 +1,118 @@
 // app/api/refunds/route.ts
-import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
-// Use a relative import to avoid alias resolution issues in Vercel
-import { sql, first } from '../../../lib/db';
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
+import { sql } from "../../../lib/db";
 
+// Tiny helper: avoid importing a non-existent export from lib/db
+const firstRow = <T>(rows: T[]): T => {
+  if (!rows || rows.length === 0) throw new Error("Not found");
+  return rows[0] as T;
+};
+
+// Row shape we RETURN from INSERT ... RETURNING
 type RefundRow = { id: string };
 
-function parseAmountToCents(v?: string | null): number | undefined {
-  if (!v) return undefined;
-  const n = Number(v.toString().replace(',', '.'));
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.round(n * 100);
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  // Stripe v14 pairs safely with this API version in type space
+  apiVersion: "2023-10-16" as any,
+});
 
 async function readPayload(req: Request) {
-  // Support HTML form posts and JSON
-  try {
-    const fd = await req.formData();
+  const ct = req.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    const j = await req.json();
     return {
-      payment_intent:
-        (fd.get('payment_intent') || fd.get('pi') || fd.get('pi_id'))?.toString(),
-      charge: (fd.get('charge') || fd.get('ch'))?.toString(),
-      amount: fd.get('amount')?.toString(),
-      reason: fd.get('reason')?.toString(),
-      notes: fd.get('notes')?.toString(),
+      payment_intent: (j.payment_intent || "").toString().trim(),
+      charge: (j.charge || "").toString().trim(),
+      amount_dkk: j.amount_dkk ? Number(j.amount_dkk) : undefined,
+      reason: (j.reason || "").toString().trim(),
+      notes: (j.notes || "").toString().trim(),
     };
-  } catch {
-    try {
-      const j = await req.json();
-      return {
-        payment_intent: j.payment_intent || j.pi || j.pi_id,
-        charge: j.charge || j.ch,
-        amount: j.amount,
-        reason: j.reason,
-        notes: j.notes,
-      };
-    } catch {
-      return {};
-    }
+  } else {
+    const f = await req.formData();
+    return {
+      payment_intent: (f.get("payment_intent") || "").toString().trim(),
+      charge: (f.get("charge") || "").toString().trim(),
+      amount_dkk: f.get("amount_dkk")
+        ? Number(f.get("amount_dkk")!.toString())
+        : undefined,
+      reason: (f.get("reason") || "").toString().trim(),
+      notes: (f.get("notes") || "").toString().trim(),
+    };
   }
 }
 
 export async function POST(req: Request) {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json({ error: 'Missing STRIPE_SECRET_KEY' }, { status: 500 });
-  }
-
-  const { payment_intent, charge, amount, reason, notes } = await readPayload(req);
-
-  if (!payment_intent && !charge) {
-    return NextResponse.json(
-      { error: 'Provide either payment_intent (pi_…) or charge (ch_…).' },
-      { status: 400 }
-    );
-  }
-
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16',
-  });
-
-  const params: Stripe.RefundCreateParams = {};
-  if (payment_intent) params.payment_intent = payment_intent;
-  if (charge) params.charge = charge;
-
-  const amountCents = parseAmountToCents(amount);
-  if (amountCents) params.amount = amountCents;
-  if (reason) params.reason = reason as Stripe.RefundCreateParams.Reason;
-
-  let refund: Stripe.Response<Stripe.Refund>;
   try {
-    refund = await stripe.refunds.create(params);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || 'Stripe refund failed' },
-      { status: 400 }
-    );
-  }
+    const { payment_intent, charge, amount_dkk, reason, notes } =
+      await readPayload(req);
 
-  // Normalize IDs from the Stripe object
-  const piId =
-    typeof refund.payment_intent === 'string'
-      ? refund.payment_intent
-      : refund.payment_intent?.id ?? null;
+    if (!payment_intent && !charge) {
+      return NextResponse.json(
+        { error: "Provide either a PaymentIntent (pi_...) or a Charge (ch_...)."},
+        { status: 400 }
+      );
+    }
+    if (payment_intent && charge) {
+      return NextResponse.json(
+        { error: "Provide only one of payment_intent or charge, not both." },
+        { status: 400 }
+      );
+    }
 
-  const chId =
-    typeof refund.charge === 'string'
-      ? refund.charge
-      : (refund.charge as any) ?? null;
+    const createParams: Stripe.RefundCreateParams = {};
+    if (payment_intent) createParams.payment_intent = payment_intent;
+    if (charge) createParams.charge = charge;
 
-  // Insert the refund row with initiated_by = 'operator'
-  let row: RefundRow;
-  try {
-    row = await first<RefundRow>(sql`
-      insert into refunds (
-        provider_refund_id,
-        status,
-        amount_cents,
-        currency,
-        provider_payment_intent_id,
-        provider_charge_id,
-        reason,
-        notes,
-        initiated_by,
-        created_at
-      )
-      values (
-        ${refund.id},
-        ${refund.status},
-        ${refund.amount},
-        ${refund.currency},
-        ${piId},
-        ${chId},
-        ${reason ?? null},
-        ${notes ?? null},
-        'operator',
-        now()
-      )
+    if (typeof amount_dkk === "number" && !Number.isNaN(amount_dkk)) {
+      // Stripe uses smallest currency unit
+      createParams.amount = Math.round(amount_dkk * 100);
+    }
+    if (reason) createParams.reason = reason as any;
+
+    // Internal audit context
+    createParams.metadata = {
+      initiated_by: "operator",
+      notes: notes || "",
+    };
+
+    const refund = await stripe.refunds.create(createParams);
+
+    // Normalize IDs returned by Stripe
+    const provider_payment_intent_id =
+      typeof refund.payment_intent === "string"
+        ? refund.payment_intent
+        : refund.payment_intent?.id ?? null;
+
+    const provider_charge_id =
+      typeof refund.charge === "string" ? refund.charge : refund.charge?.id ?? null;
+
+    // Insert refund row (ensure NOT NULL initiated_by)
+    const rows = await sql<RefundRow>`
+      insert into refunds
+        (provider_refund_id, status, amount_cents, currency,
+         provider_payment_intent_id, provider_charge_id, initiated_by)
+      values
+        (${refund.id}, ${refund.status}, ${refund.amount ?? null}, ${refund.currency ?? "dkk"},
+         ${provider_payment_intent_id}, ${provider_charge_id}, 'operator')
       returning id
-    `);
+    `;
+    const row = firstRow(rows);
 
+    // Audit event
     await sql`
       insert into refund_events (refund_id, type, created_at)
       values (${row.id}, 'operator_created', now())
     `;
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        error:
-          err?.message ||
-          'Database insert failed (refunds / refund_events). Check schema.',
-        stripe_refund_id: refund.id,
-      },
-      { status: 500 }
-    );
-  }
 
-  // Redirect to the refund detail page
-  const url = new URL(`/refunds/${row.id}`, req.url);
-  return NextResponse.redirect(url, { status: 303 });
+    // Redirect to the new refund details page
+    const url = new URL(`/refunds/${row.id}`, req.url);
+    return NextResponse.redirect(url, { status: 303 });
+  } catch (err: any) {
+    const message =
+      err?.raw?.message ||
+      err?.message ||
+      "Refund creation failed. See logs for details.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
