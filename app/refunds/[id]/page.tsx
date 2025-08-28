@@ -1,105 +1,125 @@
-// app/refunds/[id]/page.tsx
-// FULL FILE — server-rendered refund detail + events with local times.
+import Link from 'next/link';
+import { sql } from '../../../lib/db';
 
-import Link from "next/link";
-import LocalTime from "../../../components/LocalTime";
-
-export const dynamic = "force-dynamic";
-
-type Refund = {
+type RefundRow = {
   id: string;
-  provider: string;
   provider_refund_id: string | null;
+  status: string | null;
+  amount_cents: number | null;
+  currency: string | null;
   provider_payment_intent_id: string | null;
   provider_charge_id: string | null;
-  status: string;
-  amount_cents: number;
-  currency: string;
   reason: string | null;
   notes: string | null;
-  source: string;
+  source: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 };
 
 type EventRow = {
   type: string;
-  payload: unknown;
+  payload: any | null;
   created_at: string;
 };
 
-async function fetchRefund(id: string): Promise<{ refund: Refund; events: EventRow[] }> {
-  const base = process.env.APP_BASE_URL!;
-  const key = process.env.OPERATOR_API_KEY!;
-  const res = await fetch(`${base}/api/refunds/${id}`, {
-    headers: { "x-operator-key": key },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch refund ${id}: ${res.status}`);
-  }
-  return (await res.json()) as { refund: Refund; events: EventRow[] };
+function dkk(cents: number | null, currency: string | null) {
+  if (cents == null) return '—';
+  const amount = (cents / 100).toFixed(2);
+  return `${amount} ${currency?.toUpperCase() ?? 'DKK'}`;
 }
 
-export default async function RefundDetailPage({ params }: { params: { id: string } }) {
-  const { refund, events } = await fetchRefund(params.id);
+export default async function RefundDetail({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const id = params.id;
+
+  const refundRows: any[] = await sql`
+    select id,
+           provider_refund_id,
+           status,
+           amount_cents,
+           currency,
+           provider_payment_intent_id,
+           provider_charge_id,
+           reason,
+           notes,
+           source,
+           created_at,
+           updated_at
+      from refunds
+     where id = ${id}
+     limit 1
+  `;
+
+  if (!refundRows.length) {
+    return (
+      <main style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
+        <p>Refund not found.</p>
+        <p><Link href="/refunds">Back to refunds</Link></p>
+      </main>
+    );
+  }
+
+  const r = refundRows[0] as RefundRow;
+
+  const events: any[] = await sql`
+    select type, payload, created_at
+      from refund_events
+     where refund_id = ${id}
+     order by created_at asc
+  `;
 
   return (
-    <main style={{ padding: "24px", maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ marginBottom: 16 }}>
-        <Link href="/refunds" style={{ textDecoration: "underline" }}>
-          ← Back to refunds
-        </Link>
-      </div>
-
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-        Refund {refund.id}
-      </h1>
-      <p style={{ color: "#666", marginBottom: 24 }}>
-        Status <b>{refund.status}</b> • {(refund.amount_cents / 100).toFixed(2)}{" "}
-        {refund.currency?.toUpperCase()}
+    <main style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
+      <p>
+        <Link href="/refunds">← Back to refunds</Link>
       </p>
 
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Details</h2>
-        <div style={{ fontFamily: "monospace", fontSize: 14, lineHeight: 1.6 }}>
-          <div>provider_refund_id: {refund.provider_refund_id ?? "—"}</div>
-          <div>payment_intent_id: {refund.provider_payment_intent_id ?? "—"}</div>
-          <div>charge_id: {refund.provider_charge_id ?? "—"}</div>
-          <div>reason: {refund.reason ?? "—"}</div>
-          <div>notes: {refund.notes ?? "—"}</div>
-          <div>source: {refund.source}</div>
-          <div>created_at: <LocalTime iso={refund.created_at} /></div>
-          <div>updated_at: <LocalTime iso={refund.updated_at} /></div>
-        </div>
+      <h1 style={{ margin: '1rem 0' }}>
+        Refund <code>{r.id}</code>
+      </h1>
+
+      <p>
+        <strong>Status:</strong>{' '}
+        <span>{r.status ?? '—'}</span> •{' '}
+        <strong>Amount:</strong>{' '}
+        <span>{dkk(r.amount_cents, r.currency)}</span>
+      </p>
+
+      <section style={{ marginTop: '1rem' }}>
+        <h3>Details</h3>
+        <pre style={{ background: '#fafafa', padding: '1rem', borderRadius: 6 }}>
+{`provider_refund_id: ${r.provider_refund_id ?? '—'}
+payment_intent_id: ${r.provider_payment_intent_id ?? '—'}
+charge_id: ${r.provider_charge_id ?? '—'}
+reason: ${r.reason ?? '—'}
+notes: ${r.notes ?? '—'}
+source: ${r.source ?? '—'}
+created_at: ${r.created_at}
+updated_at: ${r.updated_at ?? '—'}`}
+        </pre>
       </section>
 
-      <section>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Event trail</h2>
-        <div style={{ border: "1px solid #eee", borderRadius: 8, overflow: "hidden" }}>
-          {events.length === 0 ? (
-            <div style={{ padding: 16, color: "#666" }}>No events yet.</div>
-          ) : (
-            events.map((e, i) => (
-              <div key={i} style={{ padding: 12, borderTop: i ? "1px solid #eee" : "none" }}>
-                <div style={{ fontWeight: 600 }}>{e.type}</div>
-                <div style={{ color: "#666", fontSize: 12 }}>
-                  <LocalTime iso={e.created_at} />
-                </div>
-                <pre
-                  style={{
-                    marginTop: 8,
-                    background: "#fafafa",
-                    padding: 12,
-                    borderRadius: 6,
-                    overflowX: "auto",
-                    fontSize: 12,
-                  }}
-                >
-                  {JSON.stringify(e.payload, null, 2)}
-                </pre>
+      <section style={{ marginTop: '2rem' }}>
+        <h3>Event trail</h3>
+        <div style={{ border: '1px solid #eee', borderRadius: 6 }}>
+          {events.map((e: EventRow, idx: number) => (
+            <div key={idx} style={{ padding: '1rem', borderTop: idx ? '1px solid #eee' : 'none' }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                {e.type}{' '}
+                <span style={{ color: '#777', fontWeight: 400 }}>
+                  {new Date(e.created_at).toISOString()}
+                </span>
               </div>
-            ))
+              <pre style={{ margin: 0, background: '#fbfbfb', padding: '0.75rem', borderRadius: 4, overflowX: 'auto' }}>
+                {JSON.stringify(e.payload ?? {}, null, 2)}
+              </pre>
+            </div>
+          ))}
+          {!events.length && (
+            <div style={{ padding: '1rem' }}>No events recorded.</div>
           )}
         </div>
       </section>
