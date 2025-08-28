@@ -1,210 +1,96 @@
-import { redirect } from 'next/navigation';
-import Stripe from 'stripe';
+// app/refunds/new/page.tsx
+import Link from "next/link";
 
-// Ensure this page + server action run on Node (Stripe SDK requires Node runtime)
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-function parseAmountToOere(input: string | null): number | undefined {
-  if (!input) return undefined;
-  const n = Number(String(input).replace(',', '.'));
-  if (Number.isNaN(n) || n < 0) return undefined;
-  return Math.round(n * 100);
-}
-
-function q(s: unknown) {
-  return typeof s === 'string' && s.trim().length ? s.trim() : undefined;
-}
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams?: { error?: string };
-}) {
-  const err = searchParams?.error;
-
-  async function createRefund(formData: FormData) {
-    'use server';
-
-    const payment_intent = q(formData.get('payment_intent') as string);
-    const charge = q(formData.get('charge') as string);
-    const amountCents = parseAmountToOere(q(formData.get('amount') as string) || null);
-    const reason = q(formData.get('reason') as string) || 'requested_by_customer';
-    const notes = q(formData.get('notes') as string);
-
-    if (!payment_intent && !charge) {
-      redirect(
-        '/refunds/new?error=' +
-          encodeURIComponent('Provide either a PaymentIntent (pi_…) or a Charge (ch_…); one is required.')
-      );
-    }
-
-    try {
-      const secret = process.env.STRIPE_SECRET_KEY;
-      if (!secret) {
-        redirect('/refunds/new?error=' + encodeURIComponent('Missing STRIPE_SECRET_KEY in Vercel env.'));
-      }
-
-      // Create the refund in Stripe
-      const stripe = new Stripe(secret!);
-      const params: Stripe.RefundCreateParams = {
-        payment_intent: payment_intent,
-        charge: charge,
-        amount: amountCents,
-        reason: reason as Stripe.RefundCreateParams.Reason,
-      };
-      const refund = await stripe.refunds.create(params);
-
-      // Lazy-load DB only after Stripe succeeds (RELATIVE PATH: ../../../lib/db)
-      const { sql } = await import('../../../lib/db');
-
-      // Persist refund row
-      const insert = await sql<{ id: string }>`
-        insert into refunds (
-          provider_refund_id,
-          provider_payment_intent_id,
-          provider_charge_id,
-          status,
-          amount_cents,
-          currency,
-          notes
-        ) values (
-          ${refund.id},
-          ${refund.payment_intent ?? null},
-          ${refund.charge ?? null},
-          ${refund.status},
-          ${refund.amount ?? null},
-          ${refund.currency},
-          ${notes ?? null}
-        )
-        returning id;
-      `;
-      const refundId = insert.rows[0]?.id;
-
-      // Log operator event (best-effort)
-      try {
-        if (refundId) {
-          await sql`
-            insert into refund_events (refund_id, type)
-            values (${refundId}, 'operator_created');
-          `;
-        }
-      } catch (e) {
-        console.error('refund_events insert failed', e);
-      }
-
-      if (!refundId) {
-        redirect(
-          '/refunds?error=' +
-            encodeURIComponent('Refund created in Stripe, but DB row missing. Check Neon and webhook updates.')
-        );
-      }
-
-      redirect(`/refunds/${refundId}`);
-    } catch (e: any) {
-      console.error('operator refund create failed', e);
-      const message =
-        (e?.raw?.message as string) ||
-        (e?.message as string) ||
-        'Refund failed. See logs.';
-      redirect('/refunds/new?error=' + encodeURIComponent(message));
-    }
-  }
-
+export default function NewRefundPage() {
   return (
-    <div style={{ maxWidth: 720, margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ fontSize: '2rem', margin: 0 }}>Create refund</h1>
-      <p style={{ color: '#666' }}>
+    <div style={{ maxWidth: 760, margin: "2rem auto", padding: "0 1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+        <h1 style={{ fontSize: "2rem", margin: 0 }}>Create refund</h1>
+        <Link href="/refunds" style={{ marginLeft: "auto" }}>
+          ← Back to refunds
+        </Link>
+      </div>
+
+      <p style={{ color: "#444", lineHeight: 1.5 }}>
         Provide <strong>either</strong> a PaymentIntent (<code>pi_…</code>) or a Charge (<code>ch_…</code>).
-        Amount is optional; blank = full refund.
+        Amount is optional; leave blank to refund the full amount.
       </p>
 
-      {err ? (
-        <div
-          style={{
-            background: '#fdecea',
-            color: '#611a15',
-            border: '1px solid #f5c6cb',
-            padding: '0.75rem 1rem',
-            borderRadius: 8,
-            marginBottom: '1rem',
-          }}
+      <form method="post" action="/api/refunds" style={{ marginTop: "1rem" }}>
+        <label style={{ display: "block", fontWeight: 600, marginTop: "1rem" }}>
+          PaymentIntent ID (pi_…)
+        </label>
+        <input
+          name="payment_intent"
+          placeholder="pi_3R..."
+          style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: 6 }}
+        />
+
+        <label style={{ display: "block", fontWeight: 600, marginTop: "1rem" }}>
+          Charge ID (ch_…)
+        </label>
+        <input
+          name="charge_id"
+          placeholder="ch_3R..."
+          style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: 6 }}
+        />
+
+        <label style={{ display: "block", fontWeight: 600, marginTop: "1rem" }}>
+          Amount (DKK)
+        </label>
+        <input
+          name="amount"
+          placeholder="Leave blank for full refund (e.g. 10.00)"
+          inputMode="numeric"
+          style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: 6 }}
+        />
+
+        <label style={{ display: "block", fontWeight: 600, marginTop: "1rem" }}>
+          Reason
+        </label>
+        <select
+          name="reason"
+          defaultValue="requested_by_customer"
+          style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: 6 }}
         >
-          {decodeURIComponent(err)}
-        </div>
-      ) : null}
+          <option value="requested_by_customer">requested_by_customer</option>
+          <option value="duplicate">duplicate</option>
+          <option value="fraudulent">fraudulent</option>
+          <option value="expired_uncaptured_charge">expired_uncaptured_charge</option>
+          <option value="failed_invoice">failed_invoice</option>
+          <option value="order_change">order_change</option>
+          <option value="product_unacceptable">product_unacceptable</option>
+          <option value="product_not_received">product_not_received</option>
+          <option value="general">general</option>
+        </select>
 
-      <form action={createRefund}>
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>PaymentIntent ID (pi_…)</span>
-            <input
-              name="payment_intent"
-              placeholder="pi_3…"
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ddd' }}
-            />
-          </label>
+        <label style={{ display: "block", fontWeight: 600, marginTop: "1rem" }}>
+          Notes (optional, internal)
+        </label>
+        <textarea
+          name="notes"
+          placeholder="Why did we refund? Any operator notes."
+          rows={4}
+          style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: 6 }}
+        />
 
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Charge ID (ch_…)</span>
-            <input
-              name="charge"
-              placeholder="ch_3…"
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ddd' }}
-            />
-          </label>
-
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Amount (DKK)</span>
-            <input
-              name="amount"
-              inputMode="decimal"
-              placeholder="Leave blank for full refund (e.g. 10.00)"
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ddd' }}
-            />
-          </label>
-
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Reason</span>
-            <select
-              name="reason"
-              defaultValue="requested_by_customer"
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ddd' }}
-            >
-              <option value="requested_by_customer">requested_by_customer</option>
-              <option value="duplicate">duplicate</option>
-              <option value="fraudulent">fraudulent</option>
-            </select>
-          </label>
-
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span>Notes (optional, internal)</span>
-            <textarea
-              name="notes"
-              rows={3}
-              placeholder="Why did we refund? Any operator notes."
-              style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ddd' }}
-            />
-          </label>
-
-          <div style={{ display: 'flex', gap: 12, marginTop: '0.5rem' }}>
-            <button
-              type="submit"
-              style={{
-                padding: '0.6rem 1rem',
-                borderRadius: 8,
-                border: '1px solid #111',
-                background: '#111',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              Create refund
-            </button>
-            <a href="/refunds" style={{ alignSelf: 'center' }}>
-              Cancel
-            </a>
-          </div>
+        <div style={{ display: "flex", gap: 12, marginTop: "1.25rem" }}>
+          <button
+            type="submit"
+            style={{
+              background: "black",
+              color: "white",
+              border: 0,
+              padding: "10px 16px",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Create refund
+          </button>
+          <Link href="/refunds">Cancel</Link>
         </div>
       </form>
     </div>
