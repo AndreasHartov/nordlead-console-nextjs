@@ -55,8 +55,8 @@ export default async function Page({
       };
       const refund = await stripe.refunds.create(params);
 
-      // Lazy-load DB only after Stripe succeeds
-      const { sql } = await import('@/lib/db');
+      // Lazy-load DB only after Stripe succeeds (RELATIVE PATH: ../../../lib/db)
+      const { sql } = await import('../../../lib/db');
 
       // Persist refund row
       const insert = await sql<{ id: string }>`
